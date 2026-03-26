@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoPack AI - Analytics Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.18.0.min.js"></script>
+    <style>
+        :root {
+            --bg-base: #0d0f14;
+            --bg-card: #181c27;
+            --border: rgba(255,255,255,0.06);
+            --border-accent: rgba(255,255,255,0.12);
+            --text-primary: #e8ecf4;
+            --text-secondary: #7c8399;
+            --text-muted: #4a5070;
+            --green: #00e5a0;
+            --blue: #4d9fff;
+            --purple: #a78bfa;
+            --amber: #f59e0b;
+            --red: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-base);
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none; z-index: 0;
+        }
+        .wrap { position: relative; z-index: 1; }
+        .navbar {
+            background: rgba(13,15,20,0.97);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-accent);
+            padding: 0.85rem 1.5rem;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .brand {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.05rem; font-weight: 600;
+            color: var(--text-primary);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green), 0 0 20px rgba(0,229,160,0.4);
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%,100% { box-shadow: 0 0 8px var(--green), 0 0 16px rgba(0,229,160,0.3); }
+            50%      { box-shadow: 0 0 14px var(--green), 0 0 28px rgba(0,229,160,0.5); }
+        }
+        .demo-badge {
+            font-size: 0.68rem; font-weight: 600; letter-spacing: 0.8px;
+            text-transform: uppercase;
+            background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
+            color: var(--amber); border-radius: 6px; padding: 2px 8px;
+        }
+        .nav-pill {
+            background: rgba(255,255,255,0.06); border: 1px solid var(--border-accent);
+            color: var(--text-secondary); border-radius: 8px; padding: 0.38rem 0.88rem;
+            font-size: 0.82rem; font-weight: 500; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: all 0.2s; cursor: pointer;
+        }
+        .nav-pill:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+
+        /* Stat cards */
+        .scard {
+            background: var(--bg-card); border-radius: 16px;
+            padding: 1.4rem 1.5rem; border: 1px solid var(--border);
+            position: relative; overflow: hidden;
+            transition: all 0.25s ease;
+        }
+        .scard::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 2px; border-radius: 16px 16px 0 0;
+        }
+        .scard.g { background: linear-gradient(135deg,var(--bg-card) 60%,rgba(0,229,160,0.04)); }
+        .scard.g::before { background: linear-gradient(90deg,var(--green),transparent); }
+        .scard.b { background: linear-gradient(135deg,var(--bg-card) 60%,rgba(77,159,255,0.04)); }
+        .scard.b::before { background: linear-gradient(90deg,var(--blue),transparent); }
+        .scard.a { background: linear-gradient(135deg,var(--bg-card) 60%,rgba(245,158,11,0.04)); }
+        .scard.a::before { background: linear-gradient(90deg,var(--amber),transparent); }
+        .scard.p { background: linear-gradient(135deg,var(--bg-card) 60%,rgba(167,139,250,0.04)); }
+        .scard.p::before { background: linear-gradient(90deg,var(--purple),transparent); }
+        .scard:hover { transform: translateY(-3px); border-color: var(--border-accent); }
+        .scard.g:hover { box-shadow: 0 8px 32px rgba(0,229,160,0.14); }
+        .scard.b:hover { box-shadow: 0 8px 32px rgba(77,159,255,0.14); }
+        .scard.a:hover { box-shadow: 0 8px 32px rgba(245,158,11,0.14); }
+        .scard.p:hover { box-shadow: 0 8px 32px rgba(167,139,250,0.14); }
+        .slabel { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.9px; color: var(--text-muted); margin-bottom: 0.5rem; }
+        .sval { font-family: 'Space Grotesk', sans-serif; font-size: 2.2rem; font-weight: 700; letter-spacing: -1.5px; line-height: 1; margin-bottom: 0.3rem; }
+        .sval.g { color: var(--green); } .sval.b { color: var(--blue); } .sval.a { color: var(--amber); } .sval.p { color: var(--purple); }
+        .ssub { font-size: 0.77rem; color: var(--text-muted); }
+        .strend { display: inline-flex; align-items: center; gap: 3px; font-size: 0.73rem; font-weight: 600; padding: 2px 7px; border-radius: 5px; margin-top: 8px; }
+        .tup { background: rgba(0,229,160,0.1); color: var(--green); }
+        .sicon { position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%); font-size: 2.8rem; opacity: 0.06; }
+
+        /* Chart cards */
+        .ccard { background: var(--bg-card); border-radius: 16px; padding: 1.5rem 1.75rem; border: 1px solid var(--border); transition: border-color 0.2s; }
+        .ccard:hover { border-color: var(--border-accent); }
+        .ctitle { font-family: 'Space Grotesk', sans-serif; font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 1.2rem; display: flex; align-items: center; gap: 8px; }
+        .ig { color: var(--green); } .ib { color: var(--blue); } .ip { color: var(--purple); } .ia { color: var(--amber); }
+
+        /* Buttons */
+        .bexp {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border-accent);
+            color: var(--text-secondary); border-radius: 10px; padding: 0.5rem 1rem;
+            font-size: 0.82rem; font-weight: 500; display: inline-flex; align-items: center; gap: 7px;
+            transition: all 0.2s; cursor: pointer;
+        }
+        .bexp:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); transform: translateY(-1px); }
+        .bexp.pri { background: rgba(0,229,160,0.1); border-color: rgba(0,229,160,0.3); color: var(--green); }
+        .bexp.pri:hover { background: rgba(0,229,160,0.18); box-shadow: 0 4px 16px rgba(0,229,160,0.18); }
+        .sec-hdr { font-size: 0.68rem; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-muted); }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark">
+    <div class="container-fluid d-flex align-items-center justify-content-between">
+        <div class="brand">
+            <span class="dot"></span>
+            EcoPack AI
+            <span style="color:var(--text-muted);font-weight:400;font-size:.88rem;">/ Analytics</span>
+            <span class="demo-badge">Demo</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="nav-pill" onclick="renderCharts(DEMO)"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+            <a href="/" class="nav-pill"><i class="bi bi-house"></i> Home</a>
+        </div>
+    </div>
+</nav>
+
+<div class="wrap container-fluid py-4 px-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <p class="sec-hdr mb-0">Overview · Last 6 months</p>
+        <div class="d-flex gap-2">
+            <button class="bexp pri"><i class="bi bi-file-pdf"></i> Export PDF</button>
+            <button class="bexp"><i class="bi bi-file-excel"></i> Export Excel</button>
+        </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="scard g">
+                <i class="bi bi-stack sicon"></i>
+                <div class="slabel">Total Recommendations</div>
+                <div class="sval g">2,847</div>
+                <div class="ssub">Across all categories</div>
+                <div class="strend tup"><i class="bi bi-arrow-up-short"></i>+12.4% vs last month</div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="scard b">
+                <i class="bi bi-leaf sicon"></i>
+                <div class="slabel">CO₂ Reduction</div>
+                <div class="sval b">38.6%</div>
+                <div class="ssub">1,094.2 units saved total</div>
+                <div class="strend tup"><i class="bi bi-arrow-up-short"></i>+5.1% improvement</div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="scard a">
+                <i class="bi bi-piggy-bank sicon"></i>
+                <div class="slabel">Cost Savings</div>
+                <div class="sval a">$84,320</div>
+                <div class="ssub">22.7% cost reduction</div>
+                <div class="strend tup"><i class="bi bi-arrow-up-short"></i>+$9,800 this month</div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="scard p">
+                <i class="bi bi-recycle sicon"></i>
+                <div class="slabel">Eco-Friendly Materials</div>
+                <div class="sval p">71%</div>
+                <div class="ssub">14 unique materials used</div>
+                <div class="strend tup"><i class="bi bi-arrow-up-short"></i>+6% adoption rate</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6"><div class="ccard"><div class="ctitle"><i class="bi bi-bar-chart ig"></i>Material Usage Distribution</div><div id="c1"></div></div></div>
+        <div class="col-lg-6"><div class="ccard"><div class="ctitle"><i class="bi bi-pie-chart ib"></i>Eco-Friendly Distribution</div><div id="c2"></div></div></div>
+    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6"><div class="ccard"><div class="ctitle"><i class="bi bi-graph-up ig"></i>CO₂ Reduction Trend</div><div id="c3"></div></div></div>
+        <div class="col-lg-6"><div class="ccard"><div class="ctitle"><i class="bi bi-currency-dollar ib"></i>Cost Savings Trend</div><div id="c4"></div></div></div>
+    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-12"><div class="ccard"><div class="ctitle"><i class="bi bi-trophy ia"></i>Top Materials by Suitability Score</div><div id="c5"></div></div></div>
+    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-12"><div class="ccard"><div class="ctitle"><i class="bi bi-box-seam ip"></i>Category Comparison</div><div id="c6"></div></div></div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const DEMO = {
+    material_usage: {
+        labels: ['Recycled PET','Kraft Paper','Bamboo Fiber','Bio-PE','Corn Starch','Hemp Fabric','Mycelium','Glass','Aluminium','Cardboard'],
+        values:  [480, 412, 378, 301, 267, 223, 189, 154, 132, 311]
+    },
+    eco_distribution: { labels: ['Eco-Friendly','Conventional'], values: [2021, 826] },
+    co2_trend: {
+        dates:  ['2024-10-01','2024-11-01','2024-12-01','2025-01-01','2025-02-01','2025-03-01'],
+        values: [22.7, 26.4, 29.1, 33.8, 36.2, 38.6]
+    },
+    cost_trend: {
+        dates:  ['2024-10-01','2024-11-01','2024-12-01','2025-01-01','2025-02-01','2025-03-01'],
+        values: [42800, 51200, 59700, 67300, 74520, 84320]
+    },
+    top_materials: {
+        labels: ['Mycelium Foam','Bamboo Fiber','Hemp Fabric','Corn Starch','Bio-PE','Recycled PET','Kraft Paper','Sugarcane Pulp','Glass','Aluminium'],
+        values: [94.2, 91.7, 89.4, 86.8, 84.5, 81.3, 78.9, 76.4, 71.2, 68.7]
+    },
+    category_comparison: {
+        categories: ['Food & Bev','Electronics','Apparel','Cosmetics','Industrial','Pharma'],
+        co2_values:  [12.4, 28.7, 18.3, 9.6, 34.2, 22.1],
+        cost_values: [8.2, 41.3, 15.7, 6.4, 52.8, 31.4]
+    }
+};
+
+const BL = {
+    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: 'DM Sans,sans-serif', color: '#7c8399', size: 12 },
+    xaxis: { gridcolor: 'rgba(255,255,255,0.04)', linecolor: 'rgba(255,255,255,0.07)', tickcolor: 'rgba(0,0,0,0)', zerolinecolor: 'rgba(255,255,255,0.05)' },
+    yaxis: { gridcolor: 'rgba(255,255,255,0.04)', linecolor: 'rgba(255,255,255,0.07)', tickcolor: 'rgba(0,0,0,0)', zerolinecolor: 'rgba(255,255,255,0.05)' },
+    legend: { bgcolor: 'rgba(0,0,0,0)', font: { color: '#7c8399', size: 12 } },
+    margin: { t: 10, l: 55, r: 20, b: 55 }, height: 340
+};
+const CF = { responsive: true, displayModeBar: false };
+
+function renderCharts(d) {
+    // 1 – Material Usage
+    Plotly.newPlot('c1', [{
+        x: d.material_usage.labels, y: d.material_usage.values, type: 'bar',
+        marker: { color: d.material_usage.values.map((_,i) => { const t=i/(d.material_usage.values.length-1); return `rgba(0,${Math.round(185+t*44)},${Math.round(100+t*60)},${0.55+t*0.4})`; }), line:{width:0} },
+        text: d.material_usage.values, textposition: 'outside', textfont:{color:'#7c8399',size:11},
+        hovertemplate:'<b>%{x}</b><br>%{y} recommendations<extra></extra>'
+    }], { ...BL, xaxis:{...BL.xaxis,tickangle:-30,tickfont:{size:11}}, yaxis:{...BL.yaxis,title:{text:'Recommendations',font:{color:'#4a5070',size:11},standoff:10}} }, CF);
+
+    // 2 – Donut
+    Plotly.newPlot('c2', [{
+        labels: d.eco_distribution.labels, values: d.eco_distribution.values, type: 'pie', hole: 0.62,
+        marker: { colors:['#00e5a0','#f87171'], line:{color:'#181c27',width:3} },
+        textinfo:'percent', textfont:{color:'#e8ecf4',size:13},
+        hovertemplate:'<b>%{label}</b><br>%{value} materials (%{percent})<extra></extra>'
+    }], { ...BL, margin:{t:10,l:30,r:30,b:10},
+        annotations:[{text:'71%<br><span style="font-size:11px;color:#7c8399">eco</span>',x:.5,y:.5,xref:'paper',yref:'paper',showarrow:false,font:{color:'#e8ecf4',size:20}}]
+    }, CF);
+
+    // 3 – CO2 trend
+    Plotly.newPlot('c3', [{
+        x: d.co2_trend.dates, y: d.co2_trend.values, type:'scatter', mode:'lines+markers',
+        line:{color:'#00e5a0',width:2.5,shape:'spline'},
+        marker:{size:8,color:'#00e5a0',line:{color:'#181c27',width:2}},
+        fill:'tozeroy', fillcolor:'rgba(0,229,160,0.07)',
+        hovertemplate:'<b>%{x}</b><br>CO₂ reduced: %{y}%<extra></extra>'
+    }], { ...BL, xaxis:{...BL.xaxis,tickformat:'%b %Y',nticks:6},
+        yaxis:{...BL.yaxis,title:{text:'Reduction %',font:{color:'#4a5070',size:11},standoff:10},ticksuffix:'%',range:[0,50]} }, CF);
+
+    // 4 – Cost trend
+    Plotly.newPlot('c4', [{
+        x: d.cost_trend.dates, y: d.cost_trend.values, type:'scatter', mode:'lines+markers',
+        fill:'tozeroy', fillcolor:'rgba(77,159,255,0.07)',
+        line:{color:'#4d9fff',width:2.5,shape:'spline'},
+        marker:{size:8,color:'#4d9fff',line:{color:'#181c27',width:2}},
+        hovertemplate:'<b>%{x}</b><br>Saved: $%{y:,.0f}<extra></extra>'
+    }], { ...BL, xaxis:{...BL.xaxis,tickformat:'%b %Y',nticks:6},
+        yaxis:{...BL.yaxis,title:{text:'Cost Savings ($)',font:{color:'#4a5070',size:11},standoff:10},tickprefix:'$',tickformat:',.0f'} }, CF);
+
+    // 5 – Horizontal bars (sorted asc so highest is top)
+    const sorted = d.top_materials.labels.map((l,i)=>({l,v:d.top_materials.values[i]})).sort((a,b)=>a.v-b.v);
+    Plotly.newPlot('c5', [{
+        y: sorted.map(s=>s.l), x: sorted.map(s=>s.v), type:'bar', orientation:'h',
+        marker:{ color:sorted.map((_,i)=>{ const t=i/(sorted.length-1); return `rgba(167,${Math.round(100+t*39)},${Math.round(200+t*50)},${0.5+t*0.45})`; }), line:{width:0} },
+        text: sorted.map(s=>s.v.toFixed(1)+'%'), textposition:'outside', textfont:{color:'#7c8399',size:11},
+        hovertemplate:'<b>%{y}</b><br>Score: %{x:.1f}%<extra></extra>'
+    }], { ...BL, height:420, margin:{t:10,l:140,r:70,b:50},
+        xaxis:{...BL.xaxis,title:{text:'Avg Suitability Score (%)',font:{color:'#4a5070',size:11},standoff:10},ticksuffix:'%',range:[0,106]},
+        yaxis:{...BL.yaxis,tickfont:{size:12,color:'#7c8399'}} }, CF);
+
+    // 6 – Grouped bars
+    Plotly.newPlot('c6', [
+        { x:d.category_comparison.categories, y:d.category_comparison.co2_values, name:'Avg CO₂ (kg)', type:'bar', marker:{color:'rgba(248,113,113,0.72)',line:{width:0}}, hovertemplate:'<b>%{x}</b><br>CO₂: %{y} kg<extra></extra>' },
+        { x:d.category_comparison.categories, y:d.category_comparison.cost_values, name:'Avg Cost ($)',  type:'bar', marker:{color:'rgba(77,159,255,0.72)', line:{width:0}}, hovertemplate:'<b>%{x}</b><br>Cost: $%{y}<extra></extra>' }
+    ], { ...BL, barmode:'group', bargap:0.25, bargroupgap:0.08,
+        xaxis:{...BL.xaxis,title:{text:'Product Category',font:{color:'#4a5070',size:11},standoff:10}},
+        yaxis:{...BL.yaxis,title:{text:'Value',font:{color:'#4a5070',size:11},standoff:10}} }, CF);
+}
+
+window.addEventListener('load', () => renderCharts(DEMO));
+</script>
+</body>
+</html>
